@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ven
 import makefun_bars
 
 SYMBOL = "CBBTC"
-MAX_CLOSES = 432
+MAX_CLOSES_KEPT = 432
 SMA_WINDOW = 400
 BUY_DIP_BPS_THRESHOLD = 97  # close * 100 < sma * 97  <=>  3.0% below SMA400
 SELL_WIN_BPS = 250
@@ -25,8 +25,8 @@ def on_batch(state, batch):
     for bar in batch["bars"]:
         if bar.get("symbol") == SYMBOL:
             _closes.append(int(bar["c"]))
-    if len(_closes) > MAX_CLOSES:
-        del _closes[:-MAX_CLOSES]
+    if len(_closes) > MAX_CLOSES_KEPT:
+        del _closes[:-MAX_CLOSES_KEPT]
 
     # Not enough history yet.
     if len(_closes) < SMA_WINDOW:
@@ -48,6 +48,7 @@ def on_batch(state, batch):
             ret_bps = 0
         bars_held = state.seq - (_buy_seq if _buy_seq is not None else state.seq)
         if ret_bps >= SELL_WIN_BPS or ret_bps <= SELL_LOSS_BPS or bars_held >= MAX_BARS_HELD:
+            # Exit when a take-profit, stop-loss, or max-hold band is hit.
             return [
                 {
                     "side": "sell",
@@ -73,5 +74,5 @@ def on_batch(state, batch):
         ]
     return []
 
-
+# Run the strategy batch loop.
 makefun_bars.run(on_batch)
